@@ -2,6 +2,8 @@ use std::process::Command;
 
 use iter_tools::Itertools;
 
+use crate::read::Displays;
+
 fn set_output(command: &mut Command, display: &str) {
     command.arg("--output");
     command.arg(display);
@@ -23,23 +25,32 @@ fn connect_extra(command: &mut Command, left: &str, right: &str) {
     command.arg(right);
 }
 
-pub fn connect_workplace(displays: Vec<String>) -> std::io::Result<()> {
+pub fn connect_external(displays: Displays) -> std::io::Result<()> {
     let mut command = Command::new("xrandr");
-    disconnect(&mut command, &displays[0]);
-    connect(&mut command, &displays[1]);
+    disconnect(&mut command, &displays.connected[0]);
+    connect(&mut command, &displays.connected[1]);
 
-    for (right, left) in displays.iter().skip(1).tuple_windows() {
+    for (right, left) in displays.connected.iter().skip(1).tuple_windows() {
         connect_extra(&mut command, left, right);
+    }
+
+    for disconnected in displays.disconnected {
+        disconnect(&mut command, &disconnected)
     }
 
     run(&mut command)
 }
 
-pub fn connect_mobile(displays: Vec<String>) -> std::io::Result<()> {
+pub fn connect_mobile(displays: Displays) -> std::io::Result<()> {
     let mut command = Command::new("xrandr");
-    connect(&mut command, &displays[0]);
-    for i in 1..displays.len() {
-        disconnect(&mut command, &displays[i]);
+    connect(&mut command, &displays.connected[0]);
+
+    for connected in displays.connected.iter().skip(1) {
+        disconnect(&mut command, &connected);
+    }
+
+    for disconnected in displays.disconnected {
+        disconnect(&mut command, &disconnected)
     }
 
     run(&mut command)
